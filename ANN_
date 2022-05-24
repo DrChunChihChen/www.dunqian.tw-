@@ -10,59 +10,185 @@ import numpy as np
 data = pd.read_csv("train.csv")
 data.info()
 
+data['COUNTER'] =1
+data.groupby(['VisitorType','Revenue'])['COUNTER'].sum()
+
+data.groupby(['OperatingSystems','Revenue'])['COUNTER'].sum()
+
 data.shape
 data.isnull().sum()
 data = data.dropna()
 data['PageValues_dummy'] = np.where(data['PageValues'] > 0, [1],data['PageValues'])
+# train_corr = data.corr()
+
 
 X = data[['Administrative','Administrative_Duration','Informational','Informational_Duration','ProductRelated',
                       'ProductRelated_Duration','BounceRates','ExitRates','PageValues','SpecialDay','Month','OperatingSystems','Browser','Region',
                       'TrafficType','VisitorType','Weekend','PageValues_dummy']]
 y = data['Revenue']
 
-x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.2, random_state = 42)
 scaler = RobustScaler()
 
 # transform "x_train"
 x_train = scaler.fit_transform(x_train)
 # transform "x_test"
 x_test = scaler.transform(x_test)
-classifier = Sequential()
-# Adding the input layer and the first hidden layer
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu', input_dim = 18))
+# classifier = Sequential()
+# # Adding the input layer and the first hidden layer
+# classifier.add(Dense(units = 36, kernel_initializer = 'uniform', activation = 'relu', input_dim = 18))
+#
+# # Adding the second hidden layer
+# classifier.add(Dense(units = 18, kernel_initializer = 'uniform', activation = 'relu'))
+#
+# # Adding the output layer
+# classifier.add(Dense(units = 1, kernel_initializer = 'uniform', activation = 'sigmoid'))
+#
+# # Compiling the ANN | means applying SGD on the whole ANN
+# classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+#
+# # Fitting the ANN to the Training set
+# classifier.fit(x_train, y_train, batch_size = 10, epochs = 100,verbose = 0)
+#
+# score, acc = classifier.evaluate(x_train, y_train,
+#                             batch_size=10)
+# print('Train score:', score)
+# print('Train accuracy:', acc)
+# # Part 3 - Making predictions and evaluating the model
+#
+# # Predicting the Test set results
+# y_pred = classifier.predict(x_test)
+# y_pred = (y_pred > 0.5)
+#
+# print('*'*20)
+# score, acc = classifier.evaluate(x_test, y_test,
+#                             batch_size=10)
+# print('Test score:', score)
+# print('Test accuracy:', acc)
+# # Making the Confusion Matrix
+# from sklearn.metrics import confusion_matrix
+# cm = confusion_matrix(y_test, y_pred)
+# p = sns.heatmap(pd.DataFrame(cm), annot=True, cmap="YlGnBu" ,fmt='g')
+# plt.title('Confusion matrix', y=1.1)
+# plt.ylabel('Actual label')
+# plt.xlabel('Predicted label')
+# plt.show()
 
-# Adding the second hidden layer
-classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu'))
+model = Sequential()
+model.add(Dense(36, input_shape=(X.shape[1],), activation='relu')) # Add an input shape! (features,)
+model.add(Dense(18, activation='sigmoid'))
+model.add(Dense(1, activation='sigmoid'))
+model.summary()
+from keras.layers import Dense, Dropout
+from keras.callbacks import EarlyStopping
+# compile the model
+model.compile(optimizer='Adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
 
-# Adding the output layer
-classifier.add(Dense(units = 1, kernel_initializer = 'uniform', activation = 'sigmoid'))
+# early stopping callback
+# This callback will stop the training when there is no improvement in
+# the validation loss for 10 consecutive epochs.
+es = EarlyStopping(monitor='val_accuracy',
+                                   mode='max', # don't minimize the accuracy!
+                                   patience=10,
+                                   restore_best_weights=True)
 
-# Compiling the ANN | means applying SGD on the whole ANN
-classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+# now we just update our model fit call
+history = model.fit(x_train,
+                    y_train,
+                    callbacks=[es],
+                    epochs=200, # you can set this to a big number!
+                    batch_size=100,
+                    validation_split=0.3,
+                    shuffle=True,
+                    verbose=1)
+history_dict = history.history
+# Learning curve(Loss)
+# let's see the training and validation loss by epoch
 
-# Fitting the ANN to the Training set
-classifier.fit(x_train, y_train, batch_size = 10, epochs = 100,verbose = 0)
+# loss
+loss_values = history_dict['loss'] # you can change this
+val_loss_values = history_dict['val_loss'] # you can also change this
 
-score, acc = classifier.evaluate(x_train, y_train,
-                            batch_size=10)
-print('Train score:', score)
-print('Train accuracy:', acc)
-# Part 3 - Making predictions and evaluating the model
+# range of X (no. of epochs)
+epochs = range(1, len(loss_values) + 1)
 
-# Predicting the Test set results
-y_pred = classifier.predict(x_test)
-y_pred = (y_pred > 0.5)
-
-print('*'*20)
-score, acc = classifier.evaluate(x_test, y_test,
-                            batch_size=10)
-print('Test score:', score)
-print('Test accuracy:', acc)
-# Making the Confusion Matrix
-from sklearn.metrics import confusion_matrix
-cm = confusion_matrix(y_test, y_pred)
-p = sns.heatmap(pd.DataFrame(cm), annot=True, cmap="YlGnBu" ,fmt='g')
-plt.title('Confusion matrix', y=1.1)
-plt.ylabel('Actual label')
-plt.xlabel('Predicted label')
+# plot
+plt.plot(epochs, loss_values, 'bo', label='Training loss')
+plt.plot(epochs, val_loss_values, 'orange', label='Validation loss')
+plt.title('Training and validation loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
 plt.show()
+
+# from keras.wrappers.scikit_learn import KerasClassifier
+# from sklearn.model_selection import GridSearchCV
+# from keras.models import Sequential
+# from keras.layers import Dense
+# def build_classifier(optimizer):
+#     classifier = Sequential()
+#     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu', input_dim = 18))
+#     classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu'))
+#     classifier.add(Dense(units = 1, kernel_initializer = 'uniform', activation = 'sigmoid'))
+#     classifier.compile(optimizer = optimizer, loss = 'binary_crossentropy', metrics = ['accuracy'])
+#     return classifier
+# classifier = KerasClassifier(build_fn = build_classifier)
+# parameters = {'batch_size': [25, 32],
+#               'epochs': [100, 200],
+#               'optimizer': ['adam', 'rmsprop']}
+# grid_search = GridSearchCV(estimator = classifier,
+#                            param_grid = parameters,
+#                            scoring = 'accuracy',
+#                            cv = 10)
+# grid_search = grid_search.fit(x_train, y_train,verbose = 0)
+# best_parameters = grid_search.best_params_
+# best_accuracy = grid_search.best_score_
+# print('Best Parameters after tuning: {}'.format(best_parameters))
+# print('Best Accuracy after tuning: {}'.format(best_accuracy))
+
+# Learning curve(accuracy)
+# let's see the training and validation accuracy by epoch
+
+# accuracy
+acc = history.history['accuracy']
+val_acc = history.history['val_accuracy']
+
+# range of X (no. of epochs)
+epochs = range(1, len(acc) + 1)
+
+# plot
+# "bo" is for "blue dot"
+plt.plot(epochs, acc, 'bo', label='Training accuracy')
+# orange is for "orange"
+plt.plot(epochs, val_acc, 'orange', label='Validation accuracy')
+plt.title('Training and validation accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+# this is the max value - should correspond to
+# the HIGHEST train accuracy
+np.max(val_acc)
+
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import classification_report
+
+# see how these are numbers between 0 and 1?
+model.predict(x_test) # prob of successes (survival)
+np.round(model.predict(x_test),0) # 1 and 0 (survival or not)
+
+
+# so we need to round to a whole number (0 or 1),
+# or the confusion matrix won't work!
+preds = np.round(model.predict(x_test),0)
+
+# confusion matrix
+print(confusion_matrix(y_test, preds)) # order matters! (actual, predicted)
+
+## array([[490,  59],   ([[TN, FP],
+##       [105, 235]])     [Fn, TP]])
+
+print(classification_report(y_test, preds))
