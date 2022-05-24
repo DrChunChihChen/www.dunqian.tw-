@@ -149,7 +149,6 @@ plt.show()
 # print('Best Accuracy after tuning: {}'.format(best_accuracy))
 
 # Learning curve(accuracy)
-# let's see the training and validation accuracy by epoch
 
 # accuracy
 acc = history.history['accuracy']
@@ -176,19 +175,11 @@ np.max(val_acc)
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 
-# see how these are numbers between 0 and 1?
 model.predict(x_test) # prob of successes (survival)
 np.round(model.predict(x_test),0) # 1 and 0 (survival or not)
 
-
-# so we need to round to a whole number (0 or 1),
-# or the confusion matrix won't work!
 preds = np.round(model.predict(x_test),0)
-
 # confusion matrix
 print(confusion_matrix(y_test, preds)) # order matters! (actual, predicted)
-
-## array([[490,  59],   ([[TN, FP],
-##       [105, 235]])     [Fn, TP]])
 
 print(classification_report(y_test, preds))
