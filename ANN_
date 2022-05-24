@@ -1,0 +1,68 @@
+from keras.models import Sequential
+from keras.layers import Dense
+from sklearn.preprocessing import RobustScaler
+from sklearn.model_selection import train_test_split
+import tensorflow
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
+data = pd.read_csv("train.csv")
+data.info()
+
+data.shape
+data.isnull().sum()
+data = data.dropna()
+data['PageValues_dummy'] = np.where(data['PageValues'] > 0, [1],data['PageValues'])
+
+X = data[['Administrative','Administrative_Duration','Informational','Informational_Duration','ProductRelated',
+                      'ProductRelated_Duration','BounceRates','ExitRates','PageValues','SpecialDay','Month','OperatingSystems','Browser','Region',
+                      'TrafficType','VisitorType','Weekend','PageValues_dummy']]
+y = data['Revenue']
+
+x_train, x_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 42)
+scaler = RobustScaler()
+
+# transform "x_train"
+x_train = scaler.fit_transform(x_train)
+# transform "x_test"
+x_test = scaler.transform(x_test)
+classifier = Sequential()
+# Adding the input layer and the first hidden layer
+classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu', input_dim = 18))
+
+# Adding the second hidden layer
+classifier.add(Dense(units = 6, kernel_initializer = 'uniform', activation = 'relu'))
+
+# Adding the output layer
+classifier.add(Dense(units = 1, kernel_initializer = 'uniform', activation = 'sigmoid'))
+
+# Compiling the ANN | means applying SGD on the whole ANN
+classifier.compile(optimizer = 'adam', loss = 'binary_crossentropy', metrics = ['accuracy'])
+
+# Fitting the ANN to the Training set
+classifier.fit(x_train, y_train, batch_size = 10, epochs = 100,verbose = 0)
+
+score, acc = classifier.evaluate(x_train, y_train,
+                            batch_size=10)
+print('Train score:', score)
+print('Train accuracy:', acc)
+# Part 3 - Making predictions and evaluating the model
+
+# Predicting the Test set results
+y_pred = classifier.predict(x_test)
+y_pred = (y_pred > 0.5)
+
+print('*'*20)
+score, acc = classifier.evaluate(x_test, y_test,
+                            batch_size=10)
+print('Test score:', score)
+print('Test accuracy:', acc)
+# Making the Confusion Matrix
+from sklearn.metrics import confusion_matrix
+cm = confusion_matrix(y_test, y_pred)
+p = sns.heatmap(pd.DataFrame(cm), annot=True, cmap="YlGnBu" ,fmt='g')
+plt.title('Confusion matrix', y=1.1)
+plt.ylabel('Actual label')
+plt.xlabel('Predicted label')
+plt.show()
